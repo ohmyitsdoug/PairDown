@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pair Down</title>
+  <style>
+    /* Reset and basic styling */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: Arial, sans-serif;
+      background: #2e7d32;
+      color: #fff;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    /* Action Bar */
+    .action-bar {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      padding: 10px;
+      background: #1b5e20;
+    }
+    .action-bar button {
+      background: #388e3c;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      color: #fff;
+      font-size: 16px;
+    }
+
+    /* Game Container */
+    .game-container {
+      flex: 1;
+      position: relative;
+      padding: 10px;
+    }
+
+    /* Deck & Stockpile */
+    .center-pile {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: flex;
+      gap: 20px;
+    }
+    .pile {
+      height: 110px;
+      position: relative;
+      cursor: pointer;
+    }
+    .pile img {
+      height: 100%;
+      width: auto;
+    }
+    .highlight {
+      outline: 4px solid yellow;
+    }
+
+    /* Computer Players */
+    .computer-container {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      display: flex;
+      justify-content: space-evenly;
+    }
+    .computer {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+    .computer .avatar {
+      width: 50px;
+      height: 50px;
+      background: #fff;
+      border-radius: 50%;
+      margin-bottom: 5px;
+      overflow: hidden;
+    }
+    .computer .avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .computer .hand {
+      position: relative;
+    }
+    .computer .hand img {
+      height: 110px;
+    }
+    .computer .card-count {
+      position: absolute;
+      top: 0;
+      right: 0;
+      background: rgba(0, 0, 0, 0.7);
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: #fff;
+    }
+
+    /* Human Player Hand */
+    .human-hand {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      height: 150px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      overflow-x: visible;
+      padding-bottom: 10px;
+    }
+    .human-hand .card {
+      width: 70px;
+      height: 110px;
+      margin-right: -30px;
+      transition: transform 0.2s;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .human-hand .card img {
+      height: 100%;
+      width: auto;
+    }
+    .human-hand .card.selected {
+      transform: translateY(-20px);
+    }
+
+    /* Turn indicator */
+    .turn-indicator {
+      position: absolute;
+      pointer-events: none;
+      border: 2px dashed yellow;
+    }
+
+    .deck-count {
+      position: absolute;
+      bottom: 5px;
+      right: 5px;
+      background: rgba(0,0,0,0.7);
+      color: #fff;
+      padding: 2px 5px;
+      font-size: 14px;
+      border-radius: 50%;
+    }
+
+    /* Modals */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    .modal {
+      background: #fff;
+      color: #000; /* Ensure modal text is black */
+      padding: 20px;
+      border-radius: 10px;
+      width: 80%;
+      max-width: 400px;
+      text-align: center;
+    }
+    .modal button {
+      margin: 10px;
+      padding: 10px 20px;
+    }
+    .modal select,
+    .modal input[type="number"] {
+      padding: 5px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Action Bar -->
+  <div class="action-bar">
+    <button id="rulesBtn">Rules</button>
+    <button id="scoreBtn">Score</button>
+    <button id="newGameBtn">New Game</button>
+  </div>
+
+  <!-- Game Container -->
+  <div class="game-container">
+    <!-- Computer Players Container -->
+    <div class="computer-container" id="computerContainer">
+      <!-- Computer players will be added dynamically -->
+    </div>
+
+    <!-- Center Piles -->
+    <div class="center-pile">
+      <!-- Deck -->
+      <div class="pile" id="deckPile">
+        <div id="deckCount" class="deck-count"></div>
+          <img src="images/deck-back.png" alt="Deck" />
+      </div>
+      <!-- Stockpile -->
+      <div class="pile" id="stockPile">
+        <!-- Stock pile card image will be set dynamically -->
+      </div>
+    </div>
+
+    <!-- Human Player Hand -->
+    <div class="human-hand" id="humanHand">
+      <!-- Human cards are added dynamically -->
+    </div>
+  </div>
+
+  <!-- Welcome Modal -->
+  <div class="modal-overlay" id="welcomeModal">
+    <div class="modal">
+      <h2>Welcome to Pair Down!</h2>
+      <i style="font-size: small;">The Card Game Where Quick Matches Mean Quick Wins!</i>
+      <p>Select number of players:</p>
+      <select id="numPlayers">
+        <option value="2">2 Players</option>
+        <option value="3">3 Players</option>
+        <option value="4">4 Players</option>
+        <option value="5">5 Players</option>
+        <option value="6">6 Players</option>
+      </select>
+      <p>Select deck size:</p>
+      <select id="deckSize">
+        <option value="45">45 cards (3 copies each)</option>
+        <option value="60">60 cards (4 copies each)</option>
+      </select>
+      <br />
+      <button id="startGameBtn">Start Game</button>
+    </div>
+  </div>
+
+  <!-- Rules Modal -->
+  <div class="modal-overlay" id="rulesModal">
+    <div class="modal">
+      <h2>Pair Down Game Rules</h2>
+      <p>The goal is to be the first player to shed all your cards.</p>
+      <p>
+        Play a card that is either equal to or higher than the stockpile card,
+        forms a natural pair (adds to 14), or is a 7.
+      </p>
+      <p>Special actions:</p>
+      <ul style="text-align: left;">
+        <li>
+          <strong>7:</strong> When a 7 is played, you immediately get another turn
+          and can play any card.
+        </li>
+        <li>
+          <strong>14:</strong> Playing a 14 collects the entire stockpile as 1 point
+          per card (stockpile is preserved for scoring) and then play passes.
+        </li>
+        <li>
+          <strong>Natural Pair:</strong> If your played card plus the stockpile top equals 14, you skip the next player's turn.
+        </li>
+      </ul>
+      <p>
+        If you can’t play a valid card, tap the deck to draw one. If still no
+        valid move, tap Pass.
+      </p>
+      <button id="closeRulesBtn">Close</button>
+    </div>
+  </div>
+
+  <!-- Score Modal -->
+  <div class="modal-overlay" id="scoreModal">
+    <div class="modal">
+      <h2>Scores</h2>
+      <div id="scoreContent">
+        <!-- Scores will be populated dynamically -->
+      </div>
+      <p id="roundInfo"></p>
+      <button id="closeScoreBtn">Close</button>
+    </div>
+  </div>
+
+  <!-- New Game Confirmation Modal -->
+  <div class="modal-overlay" id="newGameModal">
+    <div class="modal">
+      <h2>Start a New Game?</h2>
+      <button id="confirmNewGameBtn">Yes</button>
+      <button id="cancelNewGameBtn">No</button>
+    </div>
+  </div>
+
+  <!-- Round Over Modal -->
+  <div class="modal-overlay" id="roundModal">
+    <div class="modal">
+      <h2 id="roundWinnerText" style="color:#000;">Round Over</h2>
+      <button id="nextRoundBtn">Next Round</button>
+    </div>
+  </div>
+
+  <!-- Pass Button for Human -->
+  <button id="passBtn" style="position:absolute;bottom:170px;left:50%;transform:translateX(-50%);display:none;padding:10px 20px;">Pass</button>
+
+  <script>
+  const imageLinks = {
+    // Card images
+    card0: "https://images.squarespace-cdn.com/content/6707d0c6c57ca31459651c72/3baa88b2-415e-4019-8973-c65eb0f10e5f/0.png?content-type=image%2Fpng",
+    card1: "https://images.squarespace-cdn.com/content/6707d0c6c57ca31459651c72/2ecb6075-6d5e-46b6-ba1c-ec42ffc4e75a/1.png?content-type=image%2Fpng",
+    card2: "https://images.squarespace-cdn.com/content/6707d0c6c57ca31459651c72/580eef4b-8021-4830-814f-c5f6de788816/2.png?content-type=image%2Fpng",
+    card3: "https://images.squarespace-cdn.com/content/6707d0c6c57ca31459651c72/5a216de6-3f5f-4c17-98f4-5bf8802c7b41/3.png?content-type=image%2Fpng",
+    card4: "https://images.squarespace-cdn.com/content/6707d0c6c57ca31459651c72/dcbe1b42-5a07-4a29-8352-dc05331d5ae0/4.png?content-type=image%2Fpng",
+    card5: "https://images.squarespace-cdn.com/content/6707d0c6c57ca31459651c72/44a391ef-4ef6-4509-95de-c7111903e84f/5.png?content-type=image%2Fpng",
+    card6: "https://images.squarespace-cdn.com/content/6707d0c6c57ca31459651c72/e1eb857c-e162-4e0f-bc79-2938e45d867e/6.png?content-type=image%2Fpng",
+    card7: "https://images.squarespace-cdn.com/content/6707d0c6c57ca31459651c72/370518bc-8de1-4fd9-8899-33425ad1d3be/7.png?content-type=image%2Fpng",
+    card8: "https://images.squarespace-cdn.com/content/6707d0c6c57ca31459651c72/a6fb5189-9dc3-4841-a269-d7c69607a7ed/8.png?content-type=image%2Fpng",
+    card9: "https://images.squarespace-cdn.com/content/6707d0c6c57ca31459651c72/c7f48d85-09e9-45e8-901e-d23866c3d385/9.png?content-type=image%2Fpng",
+    card10: "https://images.squarespace-cdn.com/content/6707d0c6c57ca31459651c72/ee38f0f5-bba5-46fd-b2bd-cb179efcc5ad/10.png?content-type=image%2Fpng",
+    card11: "https://images.squarespace-cdn.com/content/6707d0c6c57ca31459651c72/39be1cb7-8505-4296-b621-3b1260df6978/11.png?content-type=image%2Fpng",
+    card12: "https://images.squarespace-cdn.com/content/6707d0c6c57ca31459651c72/b718e951-7739-4143-9a79-8fc3943c5366/12.png?content-type=image%2Fpng",
+    card13: "https://images.squarespace-cdn.com/content/6707d0c6c57ca31459651c72/3843fcf0-1378-46e3-a875-82fcde2d6ca6/13.png?content-type=image%2Fpng",
+    card14: "https://images.squarespace-cdn.com/content/6707d0c6c57ca31459651c72/7b7ebcdd-ca12-4e1e-b747-d15b993b8528/14.png?content-type=image%2Fpng",
+    // Other images
+    deckBack: "https://images.squarespace-cdn.com/content/6707d0c6c57ca31459651c72/d7bc0054-251a-475b-86a4-ed7e1a072cd4/deck-back.png?content-type=image%2Fpng",
+    // Avatars
+    avatar1: "https://images.squarespace-cdn.com/content/6707d0c6c57ca31459651c72/d0149d6b-8700-4921-b142-6f212b3e27d6/avatar1.png?content-type=image%2Fpng",
+    avatar2: "https://images.squarespace-cdn.com/content/6707d0c6c57ca31459651c72/2ec4e2dc-09a6-48df-b36e-a0f6a4f78922/avatar2.png?content-type=image%2Fpng",
+    avatar3: "https://images.squarespace-cdn.com/content/6707d0c6c57ca31459651c72/367f9118-4cbc-49b1-847d-9d7dd8e963d6/avatar3.png?content-type=image%2Fpng",
+    avatar4: "https://images.squarespace-cdn.com/content/6707d0c6c57ca31459651c72/e143d910-e2ef-4692-9227-d11aa89949db/avatar4.png?content-type=image%2Fpng",
+    avatar5: "https://images.squarespace-cdn.com/content/6707d0c6c57ca31459651c72/6ee8a3c1-1aaa-4139-ad55-a0da2e5890fe/avatar5.png?content-type=image%2Fpng"
+  };
+
+  // Preload images
+  function preloadImages() {
+    for (const key in imageLinks) {
+      if (imageLinks.hasOwnProperty(key)) {
+        const img = new Image();
+        img.src = imageLinks[key];
+      }
+    }
+  }
+  preloadImages();
+
+  // Modified animateCardMove: if useExisting is true, animate that element; otherwise, create a clone.
+  function animateCardMove(fromElem, toElem, cardValue, useExisting, callback) {
+    let animElem;
+    if (useExisting) {
+      // Use the existing element.
+      animElem = fromElem;
+      const rect = fromElem.getBoundingClientRect();
+      animElem.style.position = "absolute";
+      animElem.style.left = rect.left + "px";
+      animElem.style.top = rect.top + "px";
+      animElem.style.zIndex = 1000;
+    } else {
+      const rect = fromElem.getBoundingClientRect();
+      animElem = document.createElement("img");
+      animElem.src = imageLinks["card" + cardValue];
+      animElem.style.position = "absolute";
+      animElem.style.height = rect.height + "px";
+      animElem.style.left = rect.left + "px";
+      animElem.style.top = rect.top + "px";
+      animElem.style.transition = "all 0.5s ease-in-out";
+      animElem.style.zIndex = 1000;
+      document.body.appendChild(animElem);
+    }
+    // Force reflow.
+    animElem.getBoundingClientRect();
+    const startRect = animElem.getBoundingClientRect();
+    const endRect = toElem.getBoundingClientRect();
+    const deltaX = endRect.left + (endRect.width - startRect.width) / 2 - startRect.left;
+    const deltaY = endRect.top + (endRect.height - startRect.height) / 2 - startRect.top;
+    animElem.style.transition = "transform 0.5s ease-in-out";
+    animElem.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+    animElem.addEventListener("transitionend", function handler() {
+      animElem.removeEventListener("transitionend", handler);
+      if (!useExisting) {
+        document.body.removeChild(animElem);
+      } else {
+        animElem.style.visibility = "hidden";
+      }
+      if (callback) callback();
+    });
+  }
+
+  // Animate drawing a card to a player's hand using deckBack.
+  function animateDrawCard(toHandElem, drawnCard, callback) {
+    const deckElem = document.getElementById("deckPile");
+    const deckRect = deckElem.getBoundingClientRect();
+    const animElem = document.createElement("img");
+    animElem.src = imageLinks.deckBack;
+    animElem.style.position = "absolute";
+    animElem.style.height = deckRect.height + "px";
+    animElem.style.left = deckRect.left + "px";
+    animElem.style.top = deckRect.top + "px";
+    animElem.style.transition = "transform 0.5s ease-in-out";
+    animElem.style.zIndex = 1000;
+    document.body.appendChild(animElem);
+    const destRect = toHandElem.getBoundingClientRect();
+    const deltaX = destRect.left + (destRect.width - deckRect.width) / 2 - deckRect.left;
+    const deltaY = destRect.top + (destRect.height - deckRect.height) / 2 - deckRect.top;
+    animElem.getBoundingClientRect();
+    animElem.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+    animElem.addEventListener("transitionend", function handler() {
+      animElem.removeEventListener("transitionend", handler);
+      document.body.removeChild(animElem);
+      if (callback) callback();
+    });
+  }
+
+  // Game variables
+  let numPlayers = 2, deckSize = 45;
+  let players = []; // Each player: { id, name, type, hand, stockpile, score }
+  let deck = [];
+  let stockPile = [];
+  let currentPlayerIndex = 0;
+  let roundNumber = 1;
+  let humanSelectedCardIndex = null;
+  let humanTurnActive = false;
+  let gameInProgress = false;
+
+  // DOM elements
+  const welcomeModal = document.getElementById("welcomeModal");
+  const startGameBtn = document.getElementById("startGameBtn");
+  const numPlayersSelect = document.getElementById("numPlayers");
+  const deckSizeSelect = document.getElementById("deckSize");
+  const computerContainer = document.getElementById("computerContainer");
+  const humanHandDiv = document.getElementById("humanHand");
+  const deckPileDiv = document.getElementById("deckPile");
+  const stockPileDiv = document.getElementById("stockPile");
+  const passBtn = document.getElementById("passBtn");
+  const rulesModal = document.getElementById("rulesModal");
+  const scoreModal = document.getElementById("scoreModal");
+  const newGameModal = document.getElementById("newGameModal");
+  const roundModal = document.getElementById("roundModal");
+  const roundWinnerText = document.getElementById("roundWinnerText");
+  const nextRoundBtn = document.getElementById("nextRoundBtn");
+  const scoreContent = document.getElementById("scoreContent");
+  const roundInfo = document.getElementById("roundInfo");
+
+  // Modal events
+  nextRoundBtn.addEventListener("click", () => {
+    roundModal.style.display = "none";
+    continueNextRound();
+  });
+  document.getElementById("rulesBtn").addEventListener("click", () => {
+    rulesModal.style.display = "flex";
+  });
+  document.getElementById("closeRulesBtn")?.addEventListener("click", () => {
+    rulesModal.style.display = "none";
+  });
+  document.getElementById("scoreBtn").addEventListener("click", () => {
+    updateScoreModal();
+    scoreModal.style.display = "flex";
+  });
+  document.getElementById("closeScoreBtn")?.addEventListener("click", () => {
+    scoreModal.style.display = "none";
+  });
+  document.getElementById("newGameBtn").addEventListener("click", () => {
+    newGameModal.style.display = "flex";
+  });
+  document.getElementById("confirmNewGameBtn").addEventListener("click", () => {
+    newGameModal.style.display = "none";
+    welcomeModal.style.display = "flex";
+  });
+  document.getElementById("cancelNewGameBtn").addEventListener("click", () => {
+    newGameModal.style.display = "none";
+  });
+
+  function updateDeckCount() {
+    const deckCountElem = document.getElementById("deckCount");
+    if (deckCountElem) {
+      deckCountElem.textContent = deck.length;
+    }
+  }
+
+  startGameBtn.addEventListener("click", () => {
+    numPlayers = parseInt(numPlayersSelect.value);
+    deckSize = parseInt(deckSizeSelect.value);
+    welcomeModal.style.display = "none";
+    initGame();
+  });
+
+  deckPileDiv.addEventListener("click", () => {
+    if (!humanTurnActive) return;
+    if (canHumanPlay()) return;
+    let drawnCard = deck.shift();
+    updateDeckCount();
+    animateDrawCard(humanHandDiv, drawnCard, () => {
+      players[0].hand.push(drawnCard);
+      renderHumanHand();
+    });
+    if (!canHumanPlay()) {
+      passBtn.style.display = "block";
+    }
+  });
+
+  passBtn.addEventListener("click", () => {
+    passBtn.style.display = "none";
+    humanTurnActive = false;
+    humanSelectedCardIndex = null;
+    deselectAllHumanCards();
+    nextTurn();
+  });
+
+  stockPileDiv.addEventListener("click", () => {
+    if (!humanTurnActive || humanSelectedCardIndex === null) return;
+    let card = players[0].hand[humanSelectedCardIndex];
+    if (isValidPlay(card)) {
+      const cardElem = document.querySelectorAll(".human-hand .card")[humanSelectedCardIndex];
+      animateCardMove(cardElem, stockPileDiv, card, true, () => {
+        playHumanCard(humanSelectedCardIndex);
+      });
+    }
+  });
+
+  function attachHumanCardEvents(cardElem, index) {
+    cardElem.addEventListener("click", () => {
+      if (!humanTurnActive) return;
+      deselectAllHumanCards();
+      cardElem.classList.add("selected");
+      humanSelectedCardIndex = index;
+    });
+  }
+  function deselectAllHumanCards() {
+    document.querySelectorAll(".human-hand .card").forEach(card => card.classList.remove("selected"));
+    humanSelectedCardIndex = null;
+  }
+
+  function initGame() {
+    players = [];
+    deck = [];
+    stockPile = [];
+    currentPlayerIndex = 0;
+    roundNumber = 1;
+    gameInProgress = true;
+    humanTurnActive = false;
+    passBtn.style.display = "none";
+    players.push({ id: 0, name: "You", type: "human", hand: [], stockpile: [], score: 0 });
+    const computerNames = ["Deacon", "Elva", "Norma", "Anders", "Otis"];
+    for (let i = 1; i < numPlayers; i++) {
+      players.push({ 
+        id: i, 
+        name: computerNames[i - 1] || `Computer ${i}`, 
+        type: "computer", 
+        hand: [], 
+        stockpile: [], 
+        score: 0 
+      });
+    }
+    buildDeck();
+    shuffle(deck);
+    for (let p of players) {
+      p.hand = deck.splice(0, 7);
+    }
+    renderComputerPlayers();
+    updateDeckCount();
+    stockPile.push(deck.shift());
+    renderStockPile();
+    renderHumanHand();
+    highlightCurrentPlayer();
+    if (players[currentPlayerIndex].type === "human") {
+      humanTurnActive = true;
+    } else {
+      setTimeout(computerTurn, 1000);
+    }
+  }
+  function buildDeck() {
+    deck = [];
+    let copies = deckSize === 45 ? 3 : 4;
+    for (let num = 0; num <= 14; num++) {
+      for (let i = 0; i < copies; i++) {
+        deck.push(num);
+      }
+    }
+  }
+  function shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+      let j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+  }
+  function renderHumanHand() {
+    humanHandDiv.innerHTML = "";
+    players[0].hand.sort((a, b) => a - b);
+    players[0].hand.forEach((card, index) => {
+      const cardDiv = document.createElement("div");
+      cardDiv.classList.add("card");
+      cardDiv.innerHTML = `<img src="${imageLinks["card" + card]}" alt="${card}" />`;
+      attachHumanCardEvents(cardDiv, index);
+      humanHandDiv.appendChild(cardDiv);
+    });
+  }
+  function renderStockPile() {
+    if (stockPile.length > 0) {
+      let topCard = stockPile[stockPile.length - 1];
+      stockPileDiv.innerHTML = `<img src="${imageLinks["card" + topCard]}" alt="${topCard}" />`;
+    } else {
+      stockPileDiv.innerHTML = "";
+    }
+  }
+  function renderComputerPlayers() {
+    computerContainer.innerHTML = "";
+    for (let i = 1; i < players.length; i++) {
+      const comp = players[i];
+      const compDiv = document.createElement("div");
+      compDiv.classList.add("computer");
+      compDiv.id = `player-${comp.id}`;
+      compDiv.innerHTML = `
+        <div class="avatar"><img src="${imageLinks["avatar" + comp.id]}" alt="Avatar ${comp.id}" /></div>
+        <div class="hand">
+          <img src="${imageLinks.deckBack}" alt="Deck" />
+          <div class="card-count">${comp.hand.length}</div>
+        </div>
+        <div class="name">${comp.name}</div>
+      `;
+      computerContainer.appendChild(compDiv);
+    }
+  }
+  function updateComputerPlayerDisplay(playerId) {
+    const comp = players.find(p => p.id === playerId);
+    const compDiv = document.getElementById(`player-${playerId}`);
+    if (compDiv) {
+      compDiv.querySelector(".card-count").textContent = comp.hand.length;
+    }
+  }
+  function updateScoreModal() {
+    scoreContent.innerHTML = "";
+    players.forEach(p => {
+      const pDiv = document.createElement("p");
+      pDiv.style.color = "#000";
+      pDiv.textContent = `${p.name}: ${p.score}`;
+      scoreContent.appendChild(pDiv);
+    });
+    roundInfo.textContent = `Round: ${roundNumber}`;
+  }
+  function isValidPlay(card) {
+    if (stockPile.length === 0) return true;
+    if (card === 7) return true;
+    let lastCard = stockPile[stockPile.length - 1];
+    if (lastCard === 7) return true;
+    if (card >= lastCard) return true;
+    if (card + lastCard === 14) return true;
+    if (card === 14) return true;
+    return false;
+  }
+  function canHumanPlay() {
+    return players[0].hand.some(card => isValidPlay(card));
+  }
+  function playHumanCard(cardIndex) {
+    let card = players[0].hand[cardIndex];
+    if (!isValidPlay(card)) return;
+    let prevTop = stockPile.length > 0 ? stockPile[stockPile.length - 1] : null;
+    console.debug("You played card:", card);
+    if (card === 14) {
+      players[0].stockpile = players[0].stockpile.concat(stockPile);
+      stockPile = [];
+      players[0].stockpile.push(card);
+    } else {
+      stockPile.push(card);
+    }
+    players[0].hand.splice(cardIndex, 1);
+    renderHumanHand();
+    renderStockPile();
+    humanSelectedCardIndex = null;
+    passBtn.style.display = "none";
+    if (players[0].hand.length === 0) {
+      endRound(0);
+      return;
+    }
+    if (card === 7 || (prevTop !== null && card === prevTop)) {
+      humanTurnActive = true;
+    } else {
+      humanTurnActive = false;
+      nextTurn();
+    }
+  }
+  function computerTurn() {
+    const computer = players[currentPlayerIndex];
+    console.log(`${computer.name}'s turn begins.`);
+    let played = false;
+    let playedCard = null;
+    let prevTop = stockPile.length > 0 ? stockPile[stockPile.length - 1] : null;
+    computer.hand.sort((a, b) => a - b);
+    console.log(`${computer.name} hand:`, computer.hand);
+    if (prevTop !== null) {
+      console.log("Current stockpile top:", prevTop);
+    } else {
+      console.log("Stockpile is empty.");
+    }
+    if (prevTop !== null) {
+      for (let i = 0; i < computer.hand.length; i++) {
+        if (computer.hand[i] + prevTop === 14) {
+          playedCard = computer.hand.splice(i, 1)[0];
+          console.log(`${computer.name} plays natural pair card:`, playedCard);
+          if (playedCard === 14) {
+            computer.stockpile = computer.stockpile.concat(stockPile);
+            stockPile = [];
+            computer.stockpile.push(playedCard);
+          } else {
+            stockPile.push(playedCard);
+          }
+          played = true;
+          break;
+        }
+      }
+    }
+    if (!played && prevTop !== null) {
+      for (let i = 0; i < computer.hand.length; i++) {
+        if (computer.hand[i] === prevTop) {
+          playedCard = computer.hand.splice(i, 1)[0];
+          console.log(`${computer.name} plays matching card:`, playedCard);
+          if (playedCard === 14) {
+            computer.stockpile = computer.stockpile.concat(stockPile);
+            stockPile = [];
+            computer.stockpile.push(playedCard);
+          } else {
+            stockPile.push(playedCard);
+          }
+          played = true;
+          break;
+        }
+      }
+    }
+    if (!played) {
+      let candidate = null;
+      for (let i = 0; i < computer.hand.length; i++) {
+        if (isValidPlay(computer.hand[i])) {
+          candidate = i;
+          break;
+        }
+      }
+      if (candidate !== null) {
+        playedCard = computer.hand.splice(candidate, 1)[0];
+        console.log(`${computer.name} plays first valid card:`, playedCard);
+        if (playedCard === 14) {
+          computer.stockpile = computer.stockpile.concat(stockPile);
+          stockPile = [];
+          computer.stockpile.push(playedCard);
+        } else {
+          stockPile.push(playedCard);
+        }
+        played = true;
+      }
+    }
+    if (!played) {
+      if (deck.length > 0) {
+        console.log(`${computer.name} cannot play; drawing a card from deck.`);
+        let drawnCard = deck.shift();
+        updateDeckCount();
+        console.log(`${computer.name} drew:`, drawnCard);
+        animateDrawCard(
+          document.getElementById(`player-${computer.id}`).querySelector(".hand"),
+          drawnCard,
+          () => {
+            computer.hand.push(drawnCard);
+            updateComputerPlayerDisplay(computer.id);
+            console.log(`${computer.name} hand after drawing:`, computer.hand);
+            if (isValidPlay(drawnCard)) {
+              computer.hand.pop();
+              playedCard = drawnCard;
+              console.log(`${computer.name} now plays the drawn card:`, playedCard);
+              if (playedCard === 14) {
+                computer.stockpile = computer.stockpile.concat(stockPile);
+                stockPile = [];
+                computer.stockpile.push(playedCard);
+              } else {
+                stockPile.push(playedCard);
+              }
+              played = true;
+              const compHandElem = document.getElementById(`player-${computer.id}`).querySelector(".hand");
+              animateCardMove(compHandElem, stockPileDiv, playedCard, false, () => {
+                updateComputerPlayerDisplay(computer.id);
+                renderStockPile();
+                if (computer.hand.length === 0) {
+                  endRound(computer.id);
+                  return;
+                }
+                if (playedCard === 7 || (prevTop !== null && playedCard === prevTop)) {
+                  setTimeout(computerTurn, 1000);
+                } else {
+                  nextTurn();
+                }
+              });
+            } else {
+              console.log(`${computer.name} still cannot play after drawing; passing turn.`);
+              nextTurn();
+            }
+          }
+        );
+        return;
+      }
+    }
+    if (playedCard === undefined || playedCard === null) {
+      console.error(`${computer.name} did not play a valid card; playedCard is:`, playedCard);
+      nextTurn();
+      return;
+    }
+    console.log(`${computer.name} played card:`, playedCard);
+    const compHandElem = document.getElementById(`player-${computer.id}`).querySelector(".hand");
+    animateCardMove(compHandElem, stockPileDiv, playedCard, false, () => {
+      updateComputerPlayerDisplay(computer.id);
+      renderStockPile();
+      if (computer.hand.length === 0) {
+        endRound(computer.id);
+        return;
+      }
+      if (playedCard === 7 || (prevTop !== null && playedCard === prevTop)) {
+        setTimeout(computerTurn, 1000);
+      } else {
+        nextTurn();
+      }
+    });
+  }
+  function nextTurn() {
+    currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+    highlightCurrentPlayer();
+    if (players[currentPlayerIndex].type === "human") {
+      humanTurnActive = true;
+    } else {
+      setTimeout(computerTurn, 1000);
+    }
+  }
+  function highlightCurrentPlayer() {
+    document.querySelectorAll(".computer").forEach(div => { div.style.border = ""; });
+    if (players[currentPlayerIndex].type === "computer") {
+      const compDiv = document.getElementById(`player-${players[currentPlayerIndex].id}`);
+      if (compDiv) compDiv.style.border = "2px solid yellow";
+    } else {
+      humanHandDiv.style.border = "2px solid yellow";
+    }
+    if (players[currentPlayerIndex].type !== "human") {
+      humanHandDiv.style.border = "";
+    }
+  }
+  function endRound(winnerId) {
+    const winnerText = (winnerId === 0) 
+      ? "You win the round!" 
+      : `${players.find(p => p.id === winnerId).name} wins the round!`;
+    roundWinnerText.textContent = winnerText;
+    roundModal.style.display = "flex";
+    players.forEach(p => {
+      let stockPoints = p.stockpile.reduce((sum, card) => sum + (card === 7 ? 2 : 1), 0);
+      let handPoints = p.hand.reduce((sum, card) => sum + (card === 7 ? -2 : -1), 0);
+      p.score += stockPoints + handPoints;
+      p.hand = [];
+      p.stockpile = [];
+    });
+  }
+  function continueNextRound() {
+    if (deck.length < 10) {
+      buildDeck();
+      shuffle(deck);
+    }
+    players.forEach(p => {
+      p.hand = deck.splice(0, 7);
+    });
+    stockPile = [];
+    stockPile.push(deck.shift());
+    renderStockPile();
+    renderHumanHand();
+    renderComputerPlayers();
+    roundNumber++;
+    let winnerIndex = players.findIndex(p => p.id === currentPlayerIndex);
+    currentPlayerIndex = (winnerIndex + 1) % players.length;
+    if (players[currentPlayerIndex].type === "human") {
+      humanTurnActive = true;
+    } else {
+      humanTurnActive = false;
+      setTimeout(computerTurn, 1000);
+    }
+    highlightCurrentPlayer();
+  }
+  window.onload = () => {
+    welcomeModal.style.display = "flex";
+  };
+</script>
+</body>
+</html>
